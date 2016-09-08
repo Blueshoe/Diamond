@@ -22,6 +22,7 @@ req_urls_and_teststrings = https://bit.ly, <h1>Welcome</h1> , http://rum.ba/ , (
 Metrics are collected as :
     - servers.<hostname>.http.<url>.size (size of the page received in bytes)
     - servers.<hostname>.http.<url>.time (time to download the page in microsec)
+    - servers.<hostname>.http.<url>.teststring (bool as int if string is in response body)
 
     '.' and '/' chars are replaced by __, url looking like
        http://www.site.com/admin/page.html are replaced by
@@ -39,7 +40,7 @@ class HttpCollector(diamond.collector.Collector):
         config_help = super(HttpCollector, self).get_default_config_help()
         config_help.update({
             'req_port': 'Port',
-            'req_urls_and_teststringss_plus_substring':
+            'req_urls_and_teststrings':
             'comma seperated urls and substrings which have to be part of the \
             response body (e.g. https://bit.ly, <h1>Welcome</h1> , http://rum.ba/ , (c) 2016 ...)',
             'req_vhost':
@@ -51,7 +52,7 @@ class HttpCollector(diamond.collector.Collector):
         default_config = super(HttpCollector, self).get_default_config()
         default_config['path'] = 'http'
         default_config['req_vhost'] = ''
-        default_config['req_urls_and_teststrings'] = ['http://localhost/']
+        default_config['req_urls_and_teststrings'] = ['http://blueshoe.de/']
 
         default_config['headers'] = {'User-Agent': 'Diamond HTTP collector', }
         return default_config
@@ -107,10 +108,10 @@ class HttpCollector(diamond.collector.Collector):
                     metric_name + '.size',
                     len(the_page))
                 if teststring:
-                self.publish_gauge(
-                    metric_name + '.teststring',
-                    1 if the_page.count(teststring) > 0 else 0
-                )
+                    self.publish_gauge(
+                        metric_name + '.teststring',
+                        1 if the_page.count(teststring) > 0 else 0
+                    )
 
             except IOError, e:
                 self.log.error("Unable to open %s",
