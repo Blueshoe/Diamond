@@ -37,7 +37,7 @@ import diamond.collector
 def ssl_expiry_datetime(hostname):
     ssl_date_fmt = r'%b %d %H:%M:%S %Y %Z'
 
-    context = ssl.create_default_context()
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
     conn = context.wrap_socket(
         socket.socket(socket.AF_INET),
         server_hostname=hostname,
