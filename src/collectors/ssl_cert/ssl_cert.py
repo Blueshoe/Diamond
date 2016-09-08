@@ -28,27 +28,40 @@ Metrics are collected as :
 """
 
 import socket
-import ssl
-import datetime
+from datetime import datetime
+from OpenSSL import SSL
 
 import diamond.collector
 
 
+def get_cert(host, port):
+    """get certificate from remote host"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((host, port))
+    context = SSL.Context(SSL.TLSv1_METHOD)
+    conn = SSL.Connection(context, sock)
+    conn.set_connect_state()
+    conn.set_tlsext_host_name(args.host)
+    conn.do_handshake()
+    cert = conn.get_peer_certificate()
+    conn.shutdown()
+    return cert
+
 def ssl_expiry_datetime(hostname):
-    ssl_date_fmt = r'%b %d %H:%M:%S %Y %Z'
-
-    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
-    conn = context.wrap_socket(
-        socket.socket(socket.AF_INET),
-        server_hostname=hostname,
-    )
-    # 3 second timeout because Lambda has runtime limitations
-    conn.settimeout(3.0)
-
-    conn.connect((hostname, 443))
-    ssl_info = conn.getpeercert()
+    # ssl_date_fmt = r'%b %d %H:%M:%S %Y %Z'
+    #
+    # context = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
+    # conn = context.wrap_socket(
+    #     socket.socket(socket.AF_INET),
+    #     server_hostname=hostname,
+    # )
+    # # 3 second timeout because Lambda has runtime limitations
+    # conn.settimeout(3.0)
+    #
+    # conn.connect((hostname, 443))
+    # ssl_info = conn.getpeercert()
     # parse the string from the certificate into a Python datetime object
-    return datetime.datetime.strptime(ssl_info['notAfter'], ssl_date_fmt)
+    datetime.strptime(get_cert(hostname, 443).get_notAfter(), "%Y%m%d%H%M%SZ")
 
 
 def ssl_valid_time_remaining(hostname):
@@ -58,7 +71,7 @@ def ssl_valid_time_remaining(hostname):
     #     "SSL cert for %s expires at %s",
     #     hostname, expires.isoformat()
     # )
-    return expires - datetime.datetime.utcnow()
+    return expires - datetime.utcnow()
 
 
 class SslCertCollector(diamond.collector.Collector):
