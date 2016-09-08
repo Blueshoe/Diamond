@@ -61,7 +61,7 @@ def ssl_expiry_datetime(hostname):
     # conn.connect((hostname, 443))
     # ssl_info = conn.getpeercert()
     # parse the string from the certificate into a Python datetime object
-    datetime.strptime(get_cert(hostname, 443).get_notAfter(), "%Y%m%d%H%M%SZ")
+    return datetime.strptime(get_cert(hostname, 443).get_notAfter(), "%Y%m%d%H%M%SZ")
 
 
 def ssl_valid_time_remaining(hostname):
