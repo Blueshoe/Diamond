@@ -41,7 +41,7 @@ def get_cert(host, port):
     context = SSL.Context(SSL.TLSv1_METHOD)
     conn = SSL.Connection(context, sock)
     conn.set_connect_state()
-    conn.set_tlsext_host_name(args.host)
+    conn.set_tlsext_host_name(host)
     conn.do_handshake()
     cert = conn.get_peer_certificate()
     conn.shutdown()
