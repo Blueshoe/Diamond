@@ -24,10 +24,6 @@ import diamond.collector
 
 class SolrCollector(diamond.collector.Collector):
 
-    def __init__(self, *args, **kwargs):
-        super(SolrCollector, self).__init__(*args, ** kwargs)
-        self.config['host'] = self.config['host'].rstrip('/')
-
     def get_default_config_help(self):
         config_help = super(SolrCollector, self).get_default_config_help()
         config_help.update({
@@ -42,6 +38,7 @@ class SolrCollector(diamond.collector.Collector):
             " - cache (fieldValue, filter,"
             " document & queryResult cache stats)\n"
             " - jvm (JVM information) \n"
+            " - replication (Solr replication stats) \n"
         })
         return config_help
 
@@ -55,8 +52,8 @@ class SolrCollector(diamond.collector.Collector):
             'port':     8983,
             'path':     'solr',
             'core':     None,
-            'stats':    ['jvm', 'core', 'response',
-                         'query', 'update', 'cache'],
+            'stats':    ['jvm', 'core', 'response', 'query',
+                         'update', 'cache', 'replication'],
         })
         return config
 
@@ -71,8 +68,7 @@ class SolrCollector(diamond.collector.Collector):
             return value
 
     def _get(self, path):
-        path = path.lstrip('/')
-        url = 'http://%s:%i/%s' % (
+        url = 'http://%s:%i%s' % (
             self.config['host'], int(self.config['port']), path)
         try:
             response = urllib2.urlopen(url)
@@ -131,11 +127,10 @@ class SolrCollector(diamond.collector.Collector):
                 continue
 
             s = result['solr-mbeans']
-            stats = dict((s[i], s[i + 1]) for i in xrange(0, len(s), 2))
+            stats = dict((s[i], s[i+1]) for i in xrange(0, len(s), 2))
 
             if 'core' in self.config['stats']:
                 core_searcher = stats["CORE"]["searcher"]["stats"]
-
                 metrics.update([
                     ("{0}core.{1}".format(path, key),
                      core_searcher[key])
@@ -143,28 +138,37 @@ class SolrCollector(diamond.collector.Collector):
                 ])
 
             if 'query' in self.config['stats']:
-                standard = stats["QUERYHANDLER"]["standard"]["stats"]
+                query_keys = ("requests", "errors", "timeouts", "totalTime",
+                              "avgTimePerRequest", "avgRequestsPerSecond")
+                try:
+                    select = stats["QUERYHANDLER"]["/select"]["stats"]
+                    metrics.update([
+                        ("{0}queryhandler.select.{1}".format(path, key),
+                         select[key]) for key in query_keys])
+
+                except KeyError:
+                    standard = stats["QUERYHANDLER"]["standard"]["stats"]
+                    metrics.update([
+                        ("{0}queryhandler.standard.{1}".format(path, key),
+                         standard[key]) for key in query_keys])
+
                 update = stats["QUERYHANDLER"]["/update"]["stats"]
-
-                metrics.update([
-                    ("{0}queryhandler.standard.{1}".format(path, key),
-                     standard[key])
-                    for key in ("requests", "errors", "timeouts", "totalTime",
-                                "avgTimePerRequest", "avgRequestsPerSecond")
-                ])
-
                 metrics.update([
                     ("{0}queryhandler.update.{1}".format(path, key),
                      update[key])
-                    for key in ("requests", "errors", "timeouts", "totalTime",
-                                "avgTimePerRequest", "avgRequestsPerSecond")
+                    for key in query_keys
                     if update[key] != 'NaN'
                 ])
+
+            if 'replication' in self.config['stats']:
+                replication = stats["QUERYHANDLER"]["/replication"]["stats"]
+                metrics.update([
+                    ("{0}queryhandler.replication.{1}".format(path, key),
+                     replication[key]) for key in query_keys])
 
             if 'update' in self.config['stats']:
                 updatehandler = \
                     stats["UPDATEHANDLER"]["updateHandler"]["stats"]
-
                 metrics.update([
                     ("{0}updatehandler.{1}".format(path, key),
                      updatehandler[key])

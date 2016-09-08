@@ -20,7 +20,7 @@ class TestHttpCollector(CollectorTestCase):
     def setUp(self):
         config = get_collector_config('HttpCollector', {
             'req_vhost': 'www.my_server.com',
-            'req_url': ['http://www.my_server.com/']
+            'req_urls_and_teststrings': ['http://www.my_server.com/', 'keep out']
         })
 
         self.collector = HttpCollector(config, None)
@@ -39,6 +39,7 @@ class TestHttpCollector(CollectorTestCase):
 
         metrics = {
             'http__www_my_server_com_.size': 150,
+            'http__www_my_server_com_.teststring': 1
         }
 
         self.setDocExample(collector=self.collector.__class__.__name__,
